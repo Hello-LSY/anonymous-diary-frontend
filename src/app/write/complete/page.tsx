@@ -1,18 +1,13 @@
 'use client';
 
-// 동적 렌더링 강제
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Heart, ArrowRight, CheckCircle } from 'lucide-react';
 
-export default function WriteCompletePage() {
+function WriteCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const diaryId = searchParams.get('id');
@@ -196,5 +191,26 @@ export default function WriteCompletePage() {
         <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-apricot/20 rounded-full blur-xl" />
       </motion.div>
     </div>
+  );
+}
+
+export default function WriteCompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-cream to-apricot flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card className="bg-white/90 backdrop-blur-sm shadow-xl border-0">
+            <CardContent className="p-8 text-center">
+              <CheckCircle className="w-12 h-12 text-gray-600 mx-auto" />
+              <h2 className="text-xl font-semibold text-gray-800 mt-4">
+                로딩 중...
+              </h2>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <WriteCompleteContent />
+    </Suspense>
   );
 } 

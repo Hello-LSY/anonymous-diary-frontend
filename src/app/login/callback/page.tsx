@@ -1,19 +1,14 @@
 // app/login/callback/page.tsx
 'use client';
 
-// 동적 렌더링 강제
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
-export default function LoginCallbackPage() {
+function LoginCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -117,5 +112,26 @@ export default function LoginCallbackPage() {
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-cream to-apricot flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+            <CardContent className="p-8 text-center">
+              <Loader2 className="w-12 h-12 animate-spin text-gray-600 mx-auto" />
+              <h2 className="text-xl font-semibold text-gray-800 mt-4">
+                로딩 중...
+              </h2>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <LoginCallbackContent />
+    </Suspense>
   );
 }

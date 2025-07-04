@@ -1,11 +1,6 @@
 'use client';
 
-// 동적 렌더링 강제
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -22,7 +17,7 @@ import { Loader2, Sparkles, BookOpen, Wand2, ArrowLeft, Copy, X, Maximize2, Feat
 import { fetchWithAuth, handleApiResponse } from '@/lib/api';
 import { CreateDiaryRequest, RefineRequest, RefineResponse, RefineUsageResponse } from '@/types';
 
-export default function WritePage() {
+function WriteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
@@ -685,5 +680,26 @@ export default function WritePage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function WritePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-cream to-apricot flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+            <CardContent className="p-8 text-center">
+              <Loader2 className="w-12 h-12 animate-spin text-gray-600 mx-auto" />
+              <h2 className="text-xl font-semibold text-gray-800 mt-4">
+                로딩 중...
+              </h2>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <WriteContent />
+    </Suspense>
   );
 } 
