@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8080';
+const API_BASE = 'https://anonymous-diary-backend.onrender.com';
 
 export interface ApiResponse<T = any> {
   data?: T;
