@@ -623,7 +623,9 @@ export default function ProfilePage() {
           </TabsList>
 
           <TabsContent value="diaries" className="space-y-6">
-            {diaries.length > 0 ? (
+            {isLoading ? (
+              <LoadingSkeleton />
+            ) : diaries.length > 0 ? (
               <AnimatePresence>
                 {diaries.map((diary) => (
                   <DiaryCard
@@ -661,7 +663,9 @@ export default function ProfilePage() {
           </TabsContent>
 
           <TabsContent value="bookmarks" className="space-y-6">
-            {bookmarks.length > 0 ? (
+            {isLoading ? (
+              <LoadingSkeleton />
+            ) : bookmarks.length > 0 ? (
               <AnimatePresence>
                 {bookmarks.map((bookmark) => (
                   <BookmarkCard
