@@ -74,7 +74,7 @@ export default function HomePage() {
       const response = await fetchWithAuth(`${endpoint}?page=${pageNum - 1}&size=10`);
       const responseData = await handleApiResponse<any>(response);
       
-      console.log('API Response:', responseData); // 디버깅용 로그
+      
       
       // Slice 기반 페이지네이션 응답 처리
       let diaries: Diary[] = [];
@@ -234,7 +234,7 @@ export default function HomePage() {
         return diary;
       }));
     } catch (err) {
-      console.log('공감 데이터 새로고침 실패:', err);
+      
     }
   };
 
@@ -264,7 +264,7 @@ export default function HomePage() {
         setUser(userData);
       }
     } catch (err) {
-      console.log('사용자 정보 로드 실패:', err);
+      
     }
   };
 

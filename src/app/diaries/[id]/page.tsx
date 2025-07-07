@@ -56,22 +56,7 @@ export default function DiaryDetailPage() {
     return date.toLocaleDateString('ko-KR');
   };
 
-  // 상태값 변화 디버깅
-  useEffect(() => {
-    console.log('currentUser:', currentUser);
-  }, [currentUser]);
 
-  useEffect(() => {
-    console.log('diary:', diary);
-  }, [diary]);
-
-  useEffect(() => {
-    console.log('comments:', comments);
-  }, [comments]);
-
-  useEffect(() => {
-    console.log('isLoading:', isLoading);
-  }, [isLoading]);
 
   // 일기 상세 정보 로드
   const loadDiaryDetail = async () => {
@@ -177,7 +162,7 @@ export default function DiaryDetailPage() {
       const userData = await handleApiResponse(response);
       setCurrentUser(userData);
     } catch (err) {
-      console.error('사용자 정보 로드 실패:', err);
+      // 사용자 정보 로드 실패 시 조용히 처리
     }
   };
 
