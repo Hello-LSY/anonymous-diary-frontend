@@ -144,7 +144,8 @@ function WriteCompleteContent() {
                 >
                   <Button
                     onClick={handleViewAll}
-                    className="w-full h-12 bg-gradient-to-r from-mint to-apricot hover:from-apricot hover:to-mint text-gray-800 font-medium transition-all duration-200"
+                    variant="outline"
+                    className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
                   >
                     <ArrowRight className="w-4 h-4 mr-2" />
                     전체글 보기
