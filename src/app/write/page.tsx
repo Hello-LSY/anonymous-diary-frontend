@@ -44,6 +44,11 @@ function WriteContent() {
   const [aiPanelOpen, setAiPanelOpen] = useState(true);
   const [aiPanelVisible, setAiPanelVisible] = useState(true);
 
+  // 다듬기 결과 적용 모달 상태
+  const [showRefineApplyModal, setShowRefineApplyModal] = useState(false);
+  const [refineModalType, setRefineModalType] = useState<'both'|'content'|null>(null);
+  const [refineSuggestedTitle, setRefineSuggestedTitle] = useState<string>('');
+
   // 로그인 상태 확인
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -227,28 +232,34 @@ function WriteContent() {
     if (animationRef.current) clearInterval(animationRef.current);
   };
 
-  // 다듬기 결과 적용
-  const handleApplyRefine = () => {
-    // 제목 추출 및 적용
+  // 다듬기 결과 적용 함수 분리
+  const applyRefineResult = (mode: 'both'|'content') => {
     const lines = fullRefinedText.split('\n');
     const firstLine = lines[0].trim();
-    
-    // 첫 번째 줄이 "추천하는 제목:" 형식인지 확인
-    if (firstLine.startsWith('추천하는 제목:')) {
+    if (mode === 'both' && firstLine.startsWith('추천하는 제목:')) {
       const suggestedTitle = firstLine.replace('추천하는 제목:', '').trim();
-      if (suggestedTitle) {
-        setTitle(suggestedTitle);
-      }
-      // 제목을 제외한 나머지 내용만 적용
-      const contentWithoutTitle = lines.slice(1).join('\n').trim();
-      setContent(contentWithoutTitle);
+      if (suggestedTitle) setTitle(suggestedTitle);
+      setContent(lines.slice(1).join('\n').trim());
+    } else if (mode === 'content' && firstLine.startsWith('추천하는 제목:')) {
+      setContent(lines.slice(1).join('\n').trim());
     } else {
-      // 기존 방식대로 전체 내용 적용
       setContent(fullRefinedText);
     }
-    
     setAnimatedRefinedText('');
     setFullRefinedText('');
+    setShowRefineApplyModal(false);
+  };
+
+  // 기존 적용하기 버튼 핸들러 수정
+  const handleApplyRefine = () => {
+    const lines = fullRefinedText.split('\n');
+    const firstLine = lines[0].trim();
+    if (firstLine.startsWith('추천하는 제목:')) {
+      setRefineSuggestedTitle(firstLine.replace('추천하는 제목:', '').trim());
+      setShowRefineApplyModal(true);
+    } else {
+      applyRefineResult('content');
+    }
   };
 
   // 모달 열기
@@ -700,6 +711,23 @@ function WriteContent() {
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* 적용하기 버튼 아래에 모달 UI 추가 */}
+      {showRefineApplyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xs text-center">
+            <div className="mb-4">
+              <span className="block text-base font-semibold mb-2">추천하는 제목을 적용할까요?</span>
+              <span className="block text-sm text-gray-600 mb-2">{refineSuggestedTitle}</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button className="w-full" onClick={() => applyRefineResult('both')}>제목+본문 모두 적용</Button>
+              <Button className="w-full" variant="outline" onClick={() => applyRefineResult('content')}>본문만 적용</Button>
+              <Button className="w-full" variant="ghost" onClick={() => setShowRefineApplyModal(false)}>취소</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
