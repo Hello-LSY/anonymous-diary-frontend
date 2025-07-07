@@ -55,6 +55,9 @@ export default function ProfilePage() {
       return;
     }
 
+    // 민감한 페이지이므로 뒤로가기 시 만료되도록 히스토리 조작
+    window.history.replaceState(null, '', '/profile');
+    
     loadUserData();
   }, [router]);
 

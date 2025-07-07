@@ -49,7 +49,11 @@ function WriteContent() {
     const token = localStorage.getItem('accessToken');
     if (!token) {
       router.push('/login');
+      return;
     }
+
+    // 민감한 페이지이므로 뒤로가기 시 만료되도록 히스토리 조작
+    window.history.replaceState(null, '', '/write');
   }, [router]);
 
   // AI 다듬기 사용량 로드
@@ -225,7 +229,24 @@ function WriteContent() {
 
   // 다듬기 결과 적용
   const handleApplyRefine = () => {
-    setContent(fullRefinedText);
+    // 제목 추출 및 적용
+    const lines = fullRefinedText.split('\n');
+    const firstLine = lines[0].trim();
+    
+    // 첫 번째 줄이 "추천하는 제목:" 형식인지 확인
+    if (firstLine.startsWith('추천하는 제목:')) {
+      const suggestedTitle = firstLine.replace('추천하는 제목:', '').trim();
+      if (suggestedTitle) {
+        setTitle(suggestedTitle);
+      }
+      // 제목을 제외한 나머지 내용만 적용
+      const contentWithoutTitle = lines.slice(1).join('\n').trim();
+      setContent(contentWithoutTitle);
+    } else {
+      // 기존 방식대로 전체 내용 적용
+      setContent(fullRefinedText);
+    }
+    
     setAnimatedRefinedText('');
     setFullRefinedText('');
   };
@@ -275,12 +296,12 @@ function WriteContent() {
           className="mb-6"
         >
           <Button
-            onClick={() => router.back()}
+            onClick={() => router.push('/')}
             variant="ghost"
             className="text-beige-600 hover:text-deepnavy-700 hover:bg-beige-100 transition-colors duration-200 flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            뒤로가기
+            홈으로
           </Button>
         </motion.div>
 
