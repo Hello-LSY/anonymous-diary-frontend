@@ -616,7 +616,11 @@ export default function ProfilePage() {
         )}
 
         {/* 탭 컨텐츠 */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'diaries' | 'bookmarks')}>
+        <Tabs value={activeTab} onValueChange={(value) => {
+          setIsLoading(true);
+          setActiveTab(value as 'diaries' | 'bookmarks');
+          // 데이터를 새로 불러오도록 loadUserData()를 호출할 수도 있음(필요시)
+        }}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="diaries">내 일기</TabsTrigger>
             <TabsTrigger value="bookmarks">북마크</TabsTrigger>
