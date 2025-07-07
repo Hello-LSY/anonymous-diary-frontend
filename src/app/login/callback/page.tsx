@@ -36,11 +36,11 @@ function LoginCallbackContent() {
         
         // 로그인 성공 후 뒤로가기 시 만료되도록 히스토리 조작
         // 현재 URL을 히스토리에서 제거하고 홈페이지로 교체
-        window.history.replaceState(null, '', '/');
+        // window.history.replaceState(null, '', '/'); // 제거
         
         // 2초 후 홈페이지로 리다이렉트
         setTimeout(() => {
-          router.push('/');
+          router.replace('/');
         }, 2000);
 
       } catch (err) {
