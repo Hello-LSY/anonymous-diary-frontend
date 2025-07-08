@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Edit, Trash2, Reply, Loader2, Send, MessageSquare } from 'lucide-react';
 import { Comment } from '@/types';
-import { DiaryContext } from '@/app/diaries/[id]/page';
+import { DiaryContext } from '@/app/diaries/[id]/DiaryContext';
 
 interface CommentItemProps {
   comment: Comment;
