@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 무명일기 프론트엔드
 
-## Getting Started
+## 소개
 
-First, run the development server:
+- **무명일기**는 익명 일기 작성, 열람, 공감, 댓글, 대댓글, 북마크, 최근 본 일기 등 다양한 기능을 제공하는 감성 일기장 서비스입니다.
+- 본 저장소는 **Next.js + TypeScript + TailwindCSS** 기반의 프론트엔드 코드입니다.
 
+---
+
+## 주요 기능
+
+### 1. 일기 작성/수정/삭제
+- 로그인 후 누구나 일기를 작성할 수 있습니다.
+- 작성한 일기는 본인만 수정/삭제 가능하며, 수정 시 성공 메시지가 Toast로 안내됩니다.
+- 삭제 시에도 성공 메시지가 표시되며, 삭제 후 홈으로 이동합니다.
+
+### 2. 일기 목록 및 무한스크롤
+- 전체 일기, 내 일기, 북마크한 일기, 최근 본 일기 탭이 제공됩니다.
+- 각 탭은 **Slice 기반 무한스크롤**로 구현되어, 스크롤 하단 도달 시 자동으로 다음 페이지를 불러옵니다.
+
+### 3. 댓글/대댓글(답글)
+- 일기 상세 페이지에서 댓글 및 1-depth 대댓글(답글) 작성이 가능합니다.
+- 대댓글은 들여쓰기, 연한 박스, ㄴ 표식 등으로 시각적으로 구분됩니다.
+- 댓글/답글 모두 수정/삭제 가능하며, 일기 작성자에게는 “작성자” 뱃지가 표시됩니다.
+
+### 4. 공감(리액션)
+- 각 일기에 대해 “좋아요”, “슬퍼요”, “응원해요” 등 공감 버튼을 누를 수 있습니다.
+- 내가 누른 공감은 테마 컬러로 강조되어 표시됩니다.
+
+### 5. 북마크(모아둔 일기)
+- 일기 상세에서 북마크 버튼을 눌러 모아둘 수 있습니다.
+- “모아둔 일기” 탭에서 북마크한 일기만 모아볼 수 있습니다.
+
+### 6. 최근 본 일기
+- 사용자가 열람한 일기는 “최근 본 일기” 탭에서 최신순으로 확인할 수 있습니다.
+- **Slice 기반 무한스크롤**로 구현되어, 스크롤 하단 도달 시 추가로 불러옵니다.
+- 최근 본 일기 데이터는 `/api/views/me/details` API로 한 번에 받아옵니다.
+
+### 7. 맨 위로 가기 버튼
+- 무한스크롤이 길어질 때를 대비해, 일정 스크롤 이상 내려가면 우측 하단에 “맨 위로” 버튼이 노출됩니다.
+- 클릭 시 부드럽게 최상단으로 이동합니다.
+
+---
+
+## 개발 및 환경설정
+
+### 1. 환경변수/백엔드 API 주소 관리
+- 백엔드 API 주소 등 환경설정은 `.env` 파일에서 관리합니다.
+- 예시:
+  ```
+  NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+  ```
+
+### 2. 주요 라이브러리
+- Next.js, React, TypeScript, TailwindCSS, Framer Motion, Lucide Icons 등
+
+### 3. 실행 방법
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. 폴더 구조
+```
+src/
+  app/           # 페이지 라우트
+  components/    # UI 컴포넌트
+  lib/           # API 유틸, 공통 함수
+  types/         # 타입 정의
+  ...
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API 연동 참고
 
-## Learn More
+- **일기/댓글/공감/북마크/최근 본 일기** 등 모든 데이터는 백엔드 REST API와 연동됩니다.
+- Slice 기반 API(`page`, `size`, `last` 등)로 무한스크롤 구현
+- 최근 본 일기 상세 리스트:  
+  `GET /api/views/me/details?page=0&size=20`  
+  → 응답의 `content` 배열을 바로 map하여 렌더링
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## UI/UX 특징
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- 테마 컬러(베이지/그린/네이비) 기반의 감성적이고 일관된 디자인
+- 모든 주요 액션(작성, 수정, 삭제, 공감, 북마크 등)에 대해 명확한 피드백(Toast, 버튼 상태 등) 제공
+- 모바일/데스크탑 반응형 지원
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 기타
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 코드/스타일/UX/데이터 연동 등 모든 부분에서 실사용 피드백을 반영해 지속적으로 개선 중입니다.
+- 추가 문의/기능 요청/버그 제보는 이슈로 남겨주세요!
