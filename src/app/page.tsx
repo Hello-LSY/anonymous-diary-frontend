@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ interface DiaryCardProps {
   index: number;
 }
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [diaries, setDiaries] = useState<Diary[]>([]);
@@ -800,5 +800,13 @@ export default function HomePage() {
       {/* 플로팅 액션 버튼 */}
       <FloatingActionButton user={user} onLogout={handleLogout} />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>로딩중...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }
