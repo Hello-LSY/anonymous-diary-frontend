@@ -113,12 +113,13 @@ export interface CreateReactionRequest {
   type: 'CHEER' | 'SAD' | 'LIKE';
 }
 
-// 댓글 관련 타입 (백엔드 응답 구조에 맞게 수정)
+// 댓글 관련 타입 (대댓글 지원)
 export interface Comment {
   id: number;
   nickname: string;
   content: string;
   createdAt: string;
+  parentCommentId?: number | null; // 대댓글인 경우 부모 댓글 ID
   isOwned?: boolean; // 본인 댓글 여부
 }
 
@@ -128,6 +129,7 @@ export interface CommentDto {
   nickname: string;
   content: string;
   createdAt: string;
+  parentCommentId?: number | null;
 }
 
 export interface CommentCreateResponse {
@@ -139,6 +141,7 @@ export interface CommentCreateResponse {
 
 export interface CreateCommentRequest {
   content: string;
+  parentCommentId?: number | null; // 대댓글인 경우 부모 댓글 ID
 }
 
 export interface UpdateCommentRequest {
