@@ -13,6 +13,9 @@ import { Heart, ArrowLeft, Send, Loader2, RefreshCw, Edit, Trash2, Bookmark, Spa
 import { fetchWithAuth, handleApiResponse } from '@/lib/api';
 import { Diary, Comment, CreateCommentRequest, CreateReactionRequest, DiaryUpdateRequest, CommentCreateResponse, DiaryDetailDto, UpdateCommentRequest } from '@/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import CommentList from '@/components/CommentList';
+
+export const DiaryContext = React.createContext<{nickname: string} | null>(null);
 
 export default function DiaryDetailPage() {
   const router = useRouter();
@@ -34,10 +37,9 @@ export default function DiaryDetailPage() {
   const [editContent, setEditContent] = useState('');
   const [editVisible, setEditVisible] = useState(true);
   const [editAllowComment, setEditAllowComment] = useState(true);
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-  const [editingCommentContent, setEditingCommentContent] = useState('');
   const [isUpdatingComment, setIsUpdatingComment] = useState(false);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [bookmarkedDiaries, setBookmarkedDiaries] = useState<Set<string>>(new Set());
@@ -235,8 +237,8 @@ export default function DiaryDetailPage() {
         method: 'DELETE',
       });
 
-      // 홈 페이지로 이동
-      router.push('/');
+      // 홈 페이지로 이동하면서 삭제 성공 파라미터 추가
+      router.push('/?deleted=true');
     } catch (err) {
       setError(err instanceof Error ? err.message : '일기 삭제에 실패했습니다.');
       setIsDeleting(false);
@@ -265,18 +267,16 @@ export default function DiaryDetailPage() {
   };
 
   // 댓글 수정
-  const handleUpdateComment = async (commentId: number) => {
-    if (!editingCommentContent.trim()) return;
+  const handleUpdateComment = async (commentId: number, content: string) => {
+    if (!content.trim()) return;
     
     setIsUpdatingComment(true);
     try {
       await fetchWithAuth(`/api/comments/${commentId}`, {
         method: 'PUT',
-        body: JSON.stringify({ content: editingCommentContent } as UpdateCommentRequest),
+        body: JSON.stringify({ content } as UpdateCommentRequest),
       });
       
-      setEditingCommentId(null);
-      setEditingCommentContent('');
       await loadComments();
     } catch (err) {
       setError(err instanceof Error ? err.message : '댓글 수정에 실패했습니다.');
@@ -306,16 +306,34 @@ export default function DiaryDetailPage() {
     }
   };
 
-  // 댓글 수정 모드 시작
-  const startEditingComment = (comment: Comment) => {
-    setEditingCommentId(comment.id);
-    setEditingCommentContent(comment.content);
-  };
 
-  // 댓글 수정 모드 취소
-  const cancelEditingComment = () => {
-    setEditingCommentId(null);
-    setEditingCommentContent('');
+
+  // 대댓글 작성
+  const handleSubmitReply = async (parentCommentId: number, content: string) => {
+    if (!content.trim()) return;
+    
+    setIsSubmittingReply(true);
+    try {
+      const response = await fetchWithAuth(`/api/comments/${diaryId}`, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          content: content,
+          parentCommentId: parentCommentId 
+        } as CreateCommentRequest),
+      });
+      
+      const result = await handleApiResponse<CommentCreateResponse>(response);
+      
+      // 댓글 목록 새로고침
+      await loadComments();
+      
+      // 일기 상세 정보도 새로고침 (댓글 수 업데이트)
+      await loadDiaryDetail();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '대댓글 작성에 실패했습니다.');
+    } finally {
+      setIsSubmittingReply(false);
+    }
   };
 
   // 수정 모드 취소
@@ -327,7 +345,8 @@ export default function DiaryDetailPage() {
   // 현재 사용자의 공감 상태 확인 (백엔드 응답 구조에 맞게)
   const userReactions = diary?.reactions?.map((r: any) => r.type) || [];
   const reactionCount = diary?._count?.reactions || 0;
-  const commentCount = diary?._count?.comments || 0;
+  // 댓글 수는 실제 댓글 배열의 길이로 계산 (루트 댓글 + 답글 모두 포함)
+  const commentCount = comments.length;
 
   // 내 북마크 id 리스트를 서버에서 받아오기
   const fetchBookmarkedIds = async () => {
@@ -693,11 +712,11 @@ export default function DiaryDetailPage() {
                           key={type}
                           onClick={() => handleReaction(type)}
                           disabled={reactingDiaries.has(diaryId)}
-                          className={`flex items-center px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
-                            isReacted 
-                              ? 'bg-deepgreen-50 text-deepgreen-600 border border-deepgreen-200 shadow-sm' 
-                              : 'bg-beige-50 text-beige-600 border border-beige-200 hover:bg-beige-100 hover:border-beige-300'
-                          }`}
+                          className={`flex items-center px-3 py-1.5 rounded-full text-sm border transition-all duration-200
+                            ${isReacted
+                              ? 'bg-deepgreen-100 text-deepgreen-700 border-deepgreen-200'
+                              : 'bg-beige-50 text-beige-600 border-beige-200 hover:bg-beige-100 hover:border-beige-300'}
+                          `}
                         >
                           <span className="mr-1.5 text-base">{emoji}</span>
                           <span className="font-medium">
@@ -722,155 +741,64 @@ export default function DiaryDetailPage() {
           </Card>
         </motion.div>
 
-        {/* 댓글 섹션 */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className="mt-8 space-y-6"
-        >
-          <h2 className="text-xl font-semibold text-deepnavy-800">댓글</h2>
-          
-          {/* 댓글 작성 */}
-          {diary?.allowComment && (
-            <Card className="bg-beige-50 border border-beige-200 shadow-sm">
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <Textarea
-                    placeholder="댓글을 작성해주세요..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className="min-h-[100px] resize-none border-beige-300 focus:border-deepgreen-500 focus:ring-deepgreen-500/20"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handleSubmitComment}
-                      disabled={!newComment.trim() || isSubmittingComment}
-                      className="bg-deepgreen-600 hover:bg-deepgreen-700 text-white"
-                    >
-                      {isSubmittingComment ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          작성 중...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          댓글 작성
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 댓글 목록 */}
-          <div className="space-y-4">
-            {comments.length > 0 ? (
-              comments.map((comment) => (
-                <Card key={comment.id} className="bg-beige-50 border border-beige-200 shadow-sm">
-                  <CardContent className="pt-6">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-deepnavy-700">
-                          {comment.nickname}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-beige-600 font-medium">
-                            {getRelativeTime(comment.createdAt)}
-                          </span>
-                          {/* 본인 댓글인 경우 수정/삭제 버튼 */}
-                          {comment.isOwned && (
-                            <div className="flex items-center space-x-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => startEditingComment(comment)}
-                                className="h-6 px-2 text-beige-600 hover:text-deepnavy-700 hover:bg-beige-200"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteComment(comment.id)}
-                                disabled={isDeletingComment}
-                                className="h-6 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              >
-                                {isDeletingComment ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-3 h-3" />
-                                )}
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {editingCommentId === comment.id ? (
-                        // 수정 모드
-                        <div className="space-y-2">
-                          <textarea
-                            value={editingCommentContent}
-                            onChange={(e) => setEditingCommentContent(e.target.value)}
-                            className="w-full px-3 py-2 border border-beige-300 rounded-md focus:outline-none focus:ring-2 focus:ring-deepgreen-500/20 focus:border-deepgreen-500 min-h-[80px] resize-none"
-                            placeholder="댓글 내용을 수정해주세요..."
-                          />
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              onClick={() => handleUpdateComment(comment.id)}
-                              disabled={isUpdatingComment}
-                              size="sm"
-                              className="bg-deepgreen-600 hover:bg-deepgreen-700 text-white"
-                            >
-                              {isUpdatingComment ? (
-                                <>
-                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                  수정 중...
-                                </>
-                              ) : (
-                                '수정 완료'
-                              )}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={cancelEditingComment}
-                              disabled={isUpdatingComment}
-                              size="sm"
-                              className="border-beige-300 text-beige-700 hover:bg-beige-50"
-                            >
-                              취소
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        // 읽기 모드
-                        <p className="text-deepnavy-700 whitespace-pre-wrap text-sm">
-                          {comment.content}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
+        <DiaryContext.Provider value={{nickname: diary.nickname ?? ''}}>
+          {/* 댓글 섹션 */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="mt-8 space-y-6"
+          >
+            <h2 className="text-xl font-semibold text-deepnavy-800">댓글</h2>
+            
+            {/* 댓글 작성 */}
+            {diary?.allowComment && (
               <Card className="bg-beige-50 border border-beige-200 shadow-sm">
-                <CardContent className="py-8 text-center">
-                  {diary?.allowComment ? (
-                    <>
-                      <p className="text-beige-600">아직 댓글이 없습니다.</p>
-                      <p className="text-beige-500 text-sm mt-1">첫 번째 댓글을 작성해보세요.</p>
-                    </>
-                  ) : (
-                    <p className="text-beige-500">댓글이 제한되었습니다.</p>
-                  )}
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <Textarea
+                      placeholder="댓글을 작성해주세요..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      className="min-h-[100px] resize-none border-beige-300 focus:border-deepgreen-500 focus:ring-deepgreen-500/20"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={handleSubmitComment}
+                        disabled={!newComment.trim() || isSubmittingComment}
+                        className="bg-deepgreen-600 hover:bg-deepgreen-700 text-white"
+                      >
+                        {isSubmittingComment ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            작성 중...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            댓글 작성
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
-          </div>
-        </motion.div>
+
+            {/* 댓글 목록 */}
+            <CommentList
+              comments={comments}
+              onUpdateComment={handleUpdateComment}
+              onDeleteComment={handleDeleteComment}
+              onSubmitReply={handleSubmitReply}
+              isUpdating={isUpdatingComment}
+              isDeleting={isDeletingComment}
+              isSubmittingReply={isSubmittingReply}
+              diaryAuthorNickname={diary.nickname ?? ''}
+            />
+          </motion.div>
+        </DiaryContext.Provider>
       </div>
     </div>
   );

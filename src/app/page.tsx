@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Heart, Sparkles, Loader2, RefreshCw, Plus, User, LogOut, Settings, Bookmark, MessageSquare } from 'lucide-react';
+import { Heart, Sparkles, Loader2, RefreshCw, Plus, User, LogOut, Settings, Bookmark, MessageSquare, CheckCircle } from 'lucide-react';
 import { fetchWithAuth, handleApiResponse } from '@/lib/api';
 import { Diary, PaginatedResponse, CreateReactionRequest, User as UserType, SliceResponse, VisibleDiarySummaryDto, UserDiarySummaryDto, BookmarkToggleResponse, BookmarkedDiaryDto } from '@/types';
 import FloatingActionButton from '@/components/FloatingActionButton';
@@ -25,6 +25,7 @@ interface DiaryCardProps {
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -36,11 +37,29 @@ export default function HomePage() {
   const [bookmarkedDiaries, setBookmarkedDiaries] = useState<Set<string>>(new Set());
   const [viewedDiaries, setViewedDiaries] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<UserType | null>(null);
-  const [activeTab, setActiveTab] = useState<'public' | 'my' | 'bookmarks'>('public');
+  const [activeTab, setActiveTab] = useState<'public' | 'my' | 'bookmarks' | 'recent'>('public');
   const [shouldAnimate, setShouldAnimate] = useState(true);
   const [hasAnimated, setHasAnimated] = useState(false);
+  const [showDeleteSuccessToast, setShowDeleteSuccessToast] = useState(false);
+  const [recentViewedDiaries, setRecentViewedDiaries] = useState<Diary[]>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+  const [recentPage, setRecentPage] = useState(0);
+  const [recentHasMore, setRecentHasMore] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastDiaryRef = useRef<HTMLDivElement | null>(null);
+
+  // URL 파라미터에서 삭제 성공 상태 확인
+  useEffect(() => {
+    const deleted = searchParams.get('deleted');
+    if (deleted === 'true') {
+      setShowDeleteSuccessToast(true);
+      setTimeout(() => {
+        setShowDeleteSuccessToast(false);
+        // URL에서 파라미터 제거
+        router.replace('/', { scroll: false });
+      }, 3000);
+    }
+  }, [searchParams, router]);
 
   // 상대 시간 계산
   const getRelativeTime = (dateString: string) => {
@@ -69,6 +88,10 @@ export default function HomePage() {
         case 'bookmarks':
           endpoint = '/api/bookmarks/me';
           break;
+        case 'recent':
+          // 최근 본 일기는 별도 함수로 처리
+          await fetchRecentViewedDiaries();
+          return;
       }
       
       const response = await fetchWithAuth(`${endpoint}?page=${pageNum - 1}&size=10`);
@@ -150,6 +173,41 @@ export default function HomePage() {
       setIsLoadingMore(false);
     }
   }, [activeTab]);
+
+  // 최근 본 일기 가져오기 (무한스크롤)
+  const fetchRecentViewedDiaries = async (page = 0, append = false) => {
+    setIsLoadingRecent(true);
+    try {
+      const response = await fetchWithAuth(`/api/views/me/details?page=${page}&size=20`);
+      const data = await handleApiResponse<any>(response);
+      const diaries = (data.content || []).map((item: any) => ({
+        ...item,
+        visible: true,
+        reactions: [],
+        _count: {
+          reactions: item.totalReactionCount || 0,
+          comments: item.commentCount || 0
+        },
+        isPublic: true,
+        allowComments: item.allowComment,
+        isRefined: item.aiRefined,
+        totalReactionCount: item.totalReactionCount || 0,
+        commentCount: item.commentCount || 0
+      }));
+      setRecentViewedDiaries(prev => append ? [...prev, ...diaries] : diaries);
+      setDiaries(prev => append ? [...prev, ...diaries] : diaries);
+      setRecentHasMore(!data.last);
+      setRecentPage(page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '최근 본 일기를 불러오는데 실패했습니다.');
+      setRecentViewedDiaries([]);
+      setDiaries([]);
+      setRecentHasMore(false);
+    } finally {
+      setIsLoadingRecent(false);
+      setIsLoading(false);
+    }
+  };
 
   // 리액션 처리
   const handleReaction = async (diaryId: string, type: 'CHEER' | 'SAD' | 'LIKE') => {
@@ -296,10 +354,30 @@ export default function HomePage() {
 
   // 탭 변경 시 일기 목록 새로고침
   useEffect(() => {
-    setPage(1);
-    setDiaries([]);
-    fetchDiaries(1, false);
+    if (activeTab === 'recent') {
+      setRecentPage(0);
+      setRecentHasMore(true);
+      setRecentViewedDiaries([]);
+      setDiaries([]);
+      fetchRecentViewedDiaries(0, false);
+    } else {
+      setPage(1);
+      setDiaries([]);
+      fetchDiaries(1, false);
+    }
   }, [activeTab, fetchDiaries]);
+
+  // 최근 본 일기 무한스크롤 IntersectionObserver
+  const lastRecentDiaryElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (isLoadingRecent || !recentHasMore || activeTab !== 'recent') return;
+    if (observerRef.current) observerRef.current.disconnect();
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        fetchRecentViewedDiaries(recentPage + 1, true);
+      }
+    });
+    if (node) observerRef.current.observe(node);
+  }, [isLoadingRecent, recentHasMore, recentPage, activeTab]);
 
   // 초기 로딩 시 북마크 id 동기화
   useEffect(() => {
@@ -351,6 +429,7 @@ export default function HomePage() {
           onAnimationComplete={() => {
             if (shouldAnimate && !hasAnimated && index === 0) {
               setHasAnimated(true);
+              setShouldAnimate(false);
             }
           }}
         >
@@ -531,6 +610,20 @@ export default function HomePage() {
                 >
                   모아둔 일기
                 </button>
+                <button
+                  onClick={() => {
+                    setShouldAnimate(true);
+                    setHasAnimated(false);
+                    setActiveTab('recent');
+                  }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    activeTab === 'recent'
+                      ? 'bg-deepgreen-600 text-white'
+                      : 'text-beige-700 hover:text-deepnavy-700'
+                  }`}
+                >
+                  최근 본 일기
+                </button>
               </div>
               <div className="flex-1 flex justify-end">
                 <Button
@@ -573,9 +666,26 @@ export default function HomePage() {
           </motion.div>
         )}
 
+        {/* 삭제 성공 Toast 알림 */}
+        {showDeleteSuccessToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-6"
+          >
+            <Alert className="bg-deepgreen-50 border-deepgreen-200 text-deepgreen-800">
+              <AlertDescription className="flex items-center">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                일기가 성공적으로 삭제되었습니다.
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+
         {/* 일기 목록 */}
         <div className="space-y-4">
-          {isLoading ? (
+          {(isLoading || (activeTab === 'recent' && isLoadingRecent)) ? (
             <LoadingSkeleton />
           ) : diaries && diaries.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -590,7 +700,11 @@ export default function HomePage() {
                       isBookmarked={bookmarkedDiaries.has(diary.id.toString())}
                       isBookmarking={bookmarkingDiaries.has(diary.id.toString())}
                       index={index}
-                      ref={index === diaries.length - 1 ? lastDiaryElementRef : undefined}
+                      ref={
+                        activeTab === 'recent'
+                          ? index === diaries.length - 1 ? lastRecentDiaryElementRef : undefined
+                          : index === diaries.length - 1 ? lastDiaryElementRef : undefined
+                      }
                     />
                   ))}
                 </AnimatePresence>
@@ -604,7 +718,11 @@ export default function HomePage() {
                     isBookmarked={bookmarkedDiaries.has(diary.id.toString())}
                     isBookmarking={bookmarkingDiaries.has(diary.id.toString())}
                     index={index}
-                    ref={index === diaries.length - 1 ? lastDiaryElementRef : undefined}
+                    ref={
+                      activeTab === 'recent'
+                        ? index === diaries.length - 1 ? lastRecentDiaryElementRef : undefined
+                        : index === diaries.length - 1 ? lastDiaryElementRef : undefined
+                    }
                   />
                 ))
               )}
@@ -624,6 +742,21 @@ export default function HomePage() {
                       </p>
                       <p className="text-gray-500 text-sm mt-2">
                         마음에 드는 일기를 북마크해보세요.
+                      </p>
+                      <Button
+                        onClick={() => setActiveTab('public')}
+                        className="mt-4 bg-deepgreen-600 hover:bg-deepgreen-700 text-white"
+                      >
+                        일기 둘러보기
+                      </Button>
+                    </>
+                  ) : activeTab === 'recent' ? (
+                    <>
+                      <p className="text-gray-600 text-lg">
+                        아직 본 일기가 없습니다.
+                      </p>
+                      <p className="text-gray-500 text-sm mt-2">
+                        일기를 읽어보시면 여기에 표시됩니다.
                       </p>
                       <Button
                         onClick={() => setActiveTab('public')}
