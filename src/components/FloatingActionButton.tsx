@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { User, Plus, LogOut, LogIn } from 'lucide-react';
+import { User, Plus, LogOut, LogIn, ArrowUp } from 'lucide-react';
 import { User as UserType } from '@/types';
 import { motion } from 'framer-motion';
 
@@ -15,6 +15,16 @@ interface FloatingActionButtonProps {
 export default function FloatingActionButton({ user, onLogout }: FloatingActionButtonProps) {
   const router = useRouter();
   const [isFloatingMenuOpen, setIsFloatingMenuOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // 스크롤 감지하여 showScrollTop 상태 변경
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 200);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleClick = () => {
     if (user) {
@@ -29,6 +39,11 @@ export default function FloatingActionButton({ user, onLogout }: FloatingActionB
     action();
   };
 
+  // 맨 위로 스크롤
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0 }}
@@ -36,6 +51,25 @@ export default function FloatingActionButton({ user, onLogout }: FloatingActionB
       transition={{ duration: 0.3 }}
       className="fixed bottom-6 right-6 z-50"
     >
+      {/* 맨 위로 버튼 */}
+      {showScrollTop && (
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.8 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.8 }}
+          transition={{ duration: 0.2 }}
+          className="absolute bottom-0 right-16"
+        >
+          <Button
+            onClick={handleScrollTop}
+            className="w-10 h-10 rounded-full bg-beige-100 hover:bg-deepgreen-100 text-deepgreen-700 shadow-md flex items-center justify-center border border-beige-300 transition-colors duration-200"
+            aria-label="맨 위로"
+            style={{ boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)' }}
+          >
+            <ArrowUp className="w-5 h-5" />
+          </Button>
+        </motion.div>
+      )}
       {/* 플로팅 메뉴 아이템들 */}
       {isFloatingMenuOpen && (
         <>
