@@ -14,8 +14,7 @@ import { fetchWithAuth, handleApiResponse } from '@/lib/api';
 import { Diary, Comment, CreateCommentRequest, CreateReactionRequest, DiaryUpdateRequest, CommentCreateResponse, DiaryDetailDto, UpdateCommentRequest } from '@/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import CommentList from '@/components/CommentList';
-
-export const DiaryContext = React.createContext<{nickname: string} | null>(null);
+import { DiaryContext } from './DiaryContext';
 
 export default function DiaryDetailPage() {
   const router = useRouter();
