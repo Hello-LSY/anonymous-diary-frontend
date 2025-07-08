@@ -1,4 +1,6 @@
-const API_BASE = 'https://anonymous-diary-backend.onrender.com';
+import { getApiBaseUrl } from './config';
+
+const API_BASE = getApiBaseUrl();
 
 export interface ApiResponse<T = any> {
   data?: T;
